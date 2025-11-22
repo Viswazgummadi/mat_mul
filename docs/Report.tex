@@ -1,0 +1,88 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+\title{Matrix Multiplication Optimization Report}
+\author{Antigravity AI}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+Matrix multiplication is a cornerstone of high-performance computing. Given two matrices $A$ ($m \times n$) and $B$ ($n \times p$), the product $C = AB$ is an $m \times p$ matrix where:
+\[ C_{ij} = \sum_{k=1}^{n} A_{ik} B_{kj} \]
+The naive algorithm has a computational complexity of $O(mnp)$, or $O(n^3)$ for square matrices. This report explores various optimization techniques to improve performance on modern CPUs.
+
+\section{Implementations}
+
+\subsection{Naive Implementation}
+The standard triple-loop approach.
+\begin{algorithmic}
+\For{$i = 0 \to m-1$}
+    \For{$j = 0 \to p-1$}
+        \For{$k = 0 \to n-1$}
+            \State $C_{ij} \gets C_{ij} + A_{ik} \times B_{kj}$
+        \EndFor
+    \EndFor
+\EndFor
+\end{algorithmic}
+\textbf{Analysis:} Poor spatial locality for matrix $B$ (stride $p$), leading to frequent cache misses.
+
+\subsection{Loop Reordering}
+Interchanging loops to $i-k-j$ ensures sequential access for all matrices.
+\begin{algorithmic}
+\For{$i = 0 \to m-1$}
+    \For{$k = 0 \to n-1$}
+        \For{$j = 0 \to p-1$}
+            \State $C_{ij} \gets C_{ij} + A_{ik} \times B_{kj}$
+        \EndFor
+    \EndFor
+\EndFor
+\end{algorithmic}
+\textbf{Analysis:} Drastically reduces cache misses, typically improving performance by 5-10x.
+
+\subsection{Tiled / Blocked}
+Decomposes matrices into blocks of size $B \times B$ that fit in the L1/L2 cache.
+\textbf{Analysis:} Maximizes data reuse. Essential for large matrices.
+
+\subsection{SIMD (Vectorization)}
+Uses AVX2 instructions to process 8 floating-point numbers simultaneously.
+\textbf{Analysis:} Theoretical 8x speedup over scalar code. Requires data alignment and careful handling of edges.
+
+\subsection{Parallelization}
+\begin{itemize}
+    \item \textbf{OpenMP:} Uses \texttt{\#pragma omp parallel for} to distribute the outer loop across threads.
+    \item \textbf{std::thread:} Manual thread management for fine-grained control.
+\end{itemize}
+\textbf{Analysis:} Scales linearly with core count until memory bandwidth becomes the bottleneck.
+
+\subsection{Strassen's Algorithm}
+A recursive divide-and-conquer algorithm with complexity $O(n^{2.81})$.
+\[ M_1 = (A_{11} + A_{22})(B_{11} + B_{22}) \]
+... (7 multiplications instead of 8)
+\textbf{Analysis:} Faster for very large matrices ($N > 1000$), but has high overhead for small ones.
+
+\subsection{Optimized SGEMM}
+Combines packing, micro-kernels, and blocking.
+\textbf{Analysis:} The state-of-the-art approach used in BLAS libraries.
+
+\section{Performance Analysis}
+Due to environment constraints, empirical benchmarking could not be completed. However, theoretical peak performance (GFLOPS) for a modern CPU can be estimated as:
+\[ \text{GFLOPS} = \text{Cores} \times \text{Clock} \times \text{FLOPS/Cycle} \]
+Optimized implementations (SGEMM) can achieve 80-90\% of this peak, while naive implementations often achieve less than 1\%.
+
+\section{Conclusion}
+Optimization requires a holistic approach:
+\begin{enumerate}
+    \item \textbf{Algorithm:} Strassen (for asymptotic improvement).
+    \item \textbf{Memory:} Tiling and Loop Reordering (for cache locality).
+    \item \textbf{Compute:} SIMD (for instruction-level parallelism).
+    \item \textbf{Threads:} OpenMP/std::thread (for task-level parallelism).
+\end{enumerate}
+
+\end{document}
